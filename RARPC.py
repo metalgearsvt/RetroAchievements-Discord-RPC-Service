@@ -3,6 +3,7 @@ import configparser
 from datetime import datetime, timezone
 from pprint import pprint
 from pypresence import Presence 
+from pypresence.types import StatusDisplayType
 import re
 import requests
 import time
@@ -97,9 +98,17 @@ def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, star
         storyProgressText = ""
     
     try:
+        msg = f"{userProfile['RichPresenceMsg']}{storyProgressText}"
+        if len(msg) > 128:
+            msg = userProfile['RichPresenceMsg']
+            if len(msg) > 128:
+                msg = ""
+        
         RPC.update(
-            details = recentlyPlayedGame['Title'],
-            state = f"{userProfile['RichPresenceMsg']}{storyProgressText}",
+            name = recentlyPlayedGame['Title'],
+            status_display_type = StatusDisplayType.NAME,
+            details = "Playing on AYN Thor",
+            state = msg,
             start = start_time,
             large_image = f"https://media.retroachievements.org{recentlyPlayedGame['ImageIcon']}",
             large_text = largeImageHoverText,
@@ -107,8 +116,9 @@ def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, star
             small_text = recentlyPlayedGame['ConsoleName'],
             buttons = [button1Link, button2Link]
         )
-    except:
-        print(Fore.RED + "Failed to update presence.")
+    except Exception as e:
+        date_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+        print(Fore.RED + f"{date_time} - Failed to update presence: {e}")
         while(isDiscordRPCAvailable(RPC) == False):
             print(Fore.RED + "Retrying in 10 seconds...")
             time.sleep(10)
@@ -155,7 +165,7 @@ def main():
     # GLOBAL SET
     isRPCRunning = False
 
-    print(Fore.YELLOW + "HOW TO USE:\n1. Open Discord app.\n2. Run this script.\nDiscord app should be running first before this script.\n")
+    # print(Fore.YELLOW + "HOW TO USE:\n1. Open Discord app.\n2. Run this script.\nDiscord app should be running first before this script.\n")
 
     if(os.path.exists('config.ini') == False):
         print(Fore.YELLOW + f"Config file not found. Running first time setup...")
@@ -187,38 +197,38 @@ def main():
 
     print("Timeout in minutes: ", timeoutInMinutes)
     print("Refresh rate in seconds: ", refreshRateInSeconds)
-
+    print("Keep running: ", keepRunning)
+    print("")
+    
     start_time = int(time.time())
 
     while True:
         warnings.filterwarnings("ignore")
 
         try:
-            # For getting the rich presence message
-            userProfile = getUserProfile(api_key, username)
-
             # For getting the recently played game
             recentlyPlayedGame = getUserRecentlyPlayedGame(api_key, username, 1)
-
-            # Getting achievements data
-            gameInfoAndUserProgress = getGameInfoAndUserProgress(api_key, username, recentlyPlayedGame['GameID'])
-            gameBeatenAchievements = getBeatenAchievements(gameInfoAndUserProgress)
-
-            if(keepRunning == False):
-                if(timeDifferenceFromNow(recentlyPlayedGame['LastPlayed']) < timeoutInMinutes):
-                    # print("Updating presence...")
-                    if(isRPCRunning == False):
-                        start_time = int(time.time())
-                    updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, start_time, gameBeatenAchievements)
-                    isRPCRunning = True
-                else:
-                    # print("Presence cleared...")
-                    RPC.clear()
-                    isRPCRunning = False
-            else:
+            # print(recentlyPlayedGame)
+            if(timeDifferenceFromNow(recentlyPlayedGame['LastPlayed']) < timeoutInMinutes):
+                # print("Present")
+                # For getting the rich presence message
+                userProfile = getUserProfile(api_key, username)
+                # print(userProfile)
+                # Getting achievements data
+                gameInfoAndUserProgress = getGameInfoAndUserProgress(api_key, username, recentlyPlayedGame['GameID'])
+                # print(gameInfoAndUserProgress)
+                gameBeatenAchievements = getBeatenAchievements(gameInfoAndUserProgress)
+                if(isRPCRunning == False):
+                    start_time = int(time.time())
                 updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, start_time, gameBeatenAchievements)
+                isRPCRunning = True
+            else:
+                # print("Not present")
+                RPC.clear()
+                isRPCRunning = False
         except Exception as e:
-            print(Fore.RED + f"Error during presence update: {e}")
+            date_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+            print(Fore.RED + f"{date_time} - Error during presence update: {e}")
             isRPCRunning = False
             print(Fore.CYAN + "Rechecking Discord RPC availability...")
             while(isDiscordRPCAvailable(RPC) == False):
