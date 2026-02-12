@@ -34,7 +34,7 @@ Note: You may alternatively store your credentials via environment variables `RE
 After running the `run.bat` file, a `config.ini` file will be created in the same directory. The credentials that you've submitted are stored in this config file.
 
 ### If you want to run the presence in the background:
-1. Use NSSM to install as a service.
+1. Use NSSM (https://nssm.cc/download) to install as a service.
 
 ### How to turn off username display?
 1. If ever you don't want your username to have a redirection button on your Discord RP, just edit the `config.ini` file and modify the value inside the `displayUsername` to `False`. By default, this is `True`. _Notice the capital letters in the True and False as wrong cases may result to an error._
