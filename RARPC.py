@@ -16,7 +16,7 @@ import psutil
 init(autoreset=True)
 
 def getData(url):
-    response = requests.get(url)
+    response = requests.get(url, headers={'Accept-Charset': 'utf-8', 'charset': 'utf-8'})
     if response.status_code == 200:
         return response.json()
     else:
@@ -80,6 +80,16 @@ def isDiscordRPCAvailable(RPC):
         print(Fore.RED + "Discord RPC is not available.")
         return False
 
+def clampState(presence, story):
+    msg = f"{presence}{story}"
+    if len(msg) > 128:
+        msg = presence
+        if len(msg) > 128:
+            msg = presence.split(",", 1)[0]
+            if len(msg) > 128:
+                msg = ""
+    return msg.decode()
+
 def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, start_time, gameBeatenAchievements):
     button1Link = None
     gameCompletionPercentage = int((recentlyPlayedGame['NumAchieved'] / recentlyPlayedGame['NumPossibleAchievements']) * 100)
@@ -98,12 +108,7 @@ def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, star
         storyProgressText = ""
     
     try:
-        msg = f"{userProfile['RichPresenceMsg']}{storyProgressText}"
-        if len(msg) > 128:
-            msg = userProfile['RichPresenceMsg']
-            if len(msg) > 128:
-                msg = ""
-        
+        msg = clampState(userProfile['RichPresenceMsg'].encode('utf-8'), storyProgressText.encode('utf-8'))        
         RPC.update(
             name = recentlyPlayedGame['Title'],
             status_display_type = StatusDisplayType.NAME,
@@ -119,6 +124,7 @@ def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, star
     except Exception as e:
         date_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         print(Fore.RED + f"{date_time} - Failed to update presence: {e}")
+        print(Fore.RED + f"{date_time} - Name: {recentlyPlayedGame['Title'].encode('utf-8')}, state: {msg.encode('utf-8')}")
         while(isDiscordRPCAvailable(RPC) == False):
             print(Fore.RED + "Retrying in 10 seconds...")
             time.sleep(10)
@@ -147,15 +153,12 @@ api_key = {api}
 # If set to True, the username will be displayed in the presence. If False, the username won't be displayed.
 displayUsername = True
 
-# If set to True, the presence won't timeout unless you stop the script. If False, the presence will timeout after a certain time.
-keepRunning = False
-
-# This is the time in minutes after which the presence will be cleared after you quitted playing (if keepRunning is set to False).
+# This is the time in minutes after which the presence will be cleared after you quit playing.
 # Increase the number if your game device has an unstable internet connection. (This is to prevent the presence from being cleared when you're still playing)
-timeoutInMinutes = 5
+timeoutInMinutes = 3
 
 # This is the time in seconds after which the presence will be updated
-refreshRateInSeconds = 15
+refreshRateInSeconds = 30
     """
 
     config_file.write(data)
@@ -177,7 +180,6 @@ def main():
     username = os.getenv('RETROACHIEVEMENTS_USERNAME', config.get('DISCORD', 'username'))
     api_key = os.getenv('RETROACHIEVEMENTS_API_KEY', config.get('DISCORD', 'api_key'))
     isDisplayUsername = config.getboolean('SETTINGS', 'displayUsername')
-    keepRunning = config.getboolean('SETTINGS', 'keepRunning')
     timeoutInMinutes = config.getint('SETTINGS', 'timeoutInMinutes')
     refreshRateInSeconds = config.getint('SETTINGS', 'refreshRateInSeconds')
 
@@ -197,7 +199,6 @@ def main():
 
     print("Timeout in minutes: ", timeoutInMinutes)
     print("Refresh rate in seconds: ", refreshRateInSeconds)
-    print("Keep running: ", keepRunning)
     print("")
     
     start_time = int(time.time())
@@ -229,12 +230,15 @@ def main():
         except Exception as e:
             date_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
             print(Fore.RED + f"{date_time} - Error during presence update: {e}")
+            print(Fore.RED + f"{date_time} - Rich presence msg: {userProfile['RichPresenceMsg'].encode('utf-8')}")
             isRPCRunning = False
             print(Fore.CYAN + "Rechecking Discord RPC availability...")
             while(isDiscordRPCAvailable(RPC) == False):
                 print(Fore.RED + "Retrying in 10 seconds...")
                 time.sleep(10)
             RPC.connect()
+            RPC.clear()
+            isRPCRunning = False
 
         time.sleep(refreshRateInSeconds)
         
