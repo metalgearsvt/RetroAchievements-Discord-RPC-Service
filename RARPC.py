@@ -11,7 +11,7 @@ import os.path
 import time
 import warnings
 from allSystems import consoleIcons
-import psutil
+import traceback
 
 init(autoreset=True)
 
@@ -88,7 +88,10 @@ def clampState(presence, story):
             msg = presence.split(",", 1)[0]
             if len(msg) > 128:
                 msg = ""
-    return msg.decode()
+    try:
+        return msg.decode("utf-8", errors="replace")
+    except:
+        return msg
 
 def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, start_time, gameBeatenAchievements):
     button1Link = None
@@ -125,10 +128,12 @@ def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, star
         date_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
         print(Fore.RED + f"{date_time} - Failed to update presence: {e}")
         print(Fore.RED + f"{date_time} - Name: {recentlyPlayedGame['Title'].encode('utf-8')}, state: {msg.encode('utf-8')}")
+        print(traceback.format_exc())
+        print(Fore.CYAN + "Waiting for Discord RPC availability...")
         while(isDiscordRPCAvailable(RPC) == False):
-            print(Fore.RED + "Retrying in 10 seconds...")
             time.sleep(10)
         RPC.connect()
+        print(Fore.CYAN + "Reconnected!")
         pass
         
 
@@ -186,10 +191,10 @@ def main():
     client_id = os.getenv('DISCORD_CLIENT_ID', "1320752097989234869")
 
     RPC = Presence(client_id)
-    print(Fore.CYAN + "Checking Discord RPC availability...")
+    print(Fore.CYAN + "Waiting for Discord RPC availability...")
 
     while(isDiscordRPCAvailable(RPC) == False):
-        print(Fore.RED + "Retrying in 10 seconds...")
+        #print(Fore.RED + "Retrying in 10 seconds...")
         time.sleep(10)
 
     time.sleep(5)
@@ -199,7 +204,6 @@ def main():
 
     print("Timeout in minutes: ", timeoutInMinutes)
     print("Refresh rate in seconds: ", refreshRateInSeconds)
-    print("")
     
     start_time = int(time.time())
 
@@ -231,14 +235,16 @@ def main():
             date_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
             print(Fore.RED + f"{date_time} - Error during presence update: {e}")
             print(Fore.RED + f"{date_time} - Rich presence msg: {userProfile['RichPresenceMsg'].encode('utf-8')}")
+            print(traceback.format_exc())
             isRPCRunning = False
             print(Fore.CYAN + "Rechecking Discord RPC availability...")
             while(isDiscordRPCAvailable(RPC) == False):
-                print(Fore.RED + "Retrying in 10 seconds...")
+                #print(Fore.RED + "Retrying in 10 seconds...")
                 time.sleep(10)
             RPC.connect()
             RPC.clear()
             isRPCRunning = False
+            print(Fore.CYAN + "Reconnected to Discord RPC!")
 
         time.sleep(refreshRateInSeconds)
         
