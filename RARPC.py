@@ -85,7 +85,7 @@ def clampState(presence, story):
     if len(msg) > 128:
         msg = presence
         if len(msg) > 128:
-            msg = presence.split(",", 1)[0]
+            msg = presence.split(b",", 1)[0]
             if len(msg) > 128:
                 msg = ""
     try:
@@ -133,6 +133,7 @@ def updatePresence(RPC, userProfile, recentlyPlayedGame, isDisplayUsername, star
         while(isDiscordRPCAvailable(RPC) == False):
             time.sleep(10)
         RPC.connect()
+        RPC.clear()
         print(Fore.CYAN + "Reconnected!")
         pass
         
